@@ -7,6 +7,8 @@ public class GameManager : MonoBehaviour
 {
     private static GameManager _instance;
     [SerializeField]
+    RectTransform dummyTileTransform;
+    [SerializeField]
     GameObject tilePrefab;
     [SerializeField]
     GameObject layerPrefab;
@@ -15,6 +17,10 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     Hand hand;
     [SerializeField]
+    Overlay overlay;
+    [SerializeField]
+    Storage storage;
+    [SerializeField]
     Vector2 initialStart;
     [SerializeField]
     int minSets;
@@ -22,8 +28,6 @@ public class GameManager : MonoBehaviour
     int maxSets;
     [SerializeField]
     int initialSize;
-    [SerializeField]
-    Storage storage;
     List<Tile> tiles;
     int totalSets;
     Dictionary<TileTypes, int> typeCount;
@@ -31,11 +35,19 @@ public class GameManager : MonoBehaviour
     GameObject restartOverlay;
     
     
-    // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
-        _instance = this;
+        if (Instance != null && Instance != this)
+        {
+            Destroy(this);
+        }
+        else
+        {
+            _instance = this;
+        }
         typeCount = new Dictionary<TileTypes, int>();
+        Utils.UpdateTileSize(dummyTileTransform.rect.size);
+        Destroy(dummyTileTransform.gameObject);
         tiles = new List<Tile>();
         Init();
     }
@@ -44,7 +56,6 @@ public class GameManager : MonoBehaviour
     {
         get
         {
-            if (_instance is null) Debug.LogError("game manager instance not found");
             return _instance;
         }
     }
@@ -89,25 +100,6 @@ public class GameManager : MonoBehaviour
         }
 
         Shuffle();
-
-        //for(int i = 0; i < 3; i++)
-        //{
-        //    GameObject currGO = Instantiate(tilePrefab, new Vector3(0, 0, 0), Quaternion.identity, playingCanvas.transform);
-        //    currGO.name = "Tile" + i;
-        //    Tile curr = currGO.GetComponent<Tile>();
-        //    curr.SetType(TileTypes.Blue);
-        //    foreach(Tile tile in tiles)
-        //    {
-        //        if (!tile.gameObject.activeSelf) continue;
-        //        if(curr.IsOverlappingWith(tile))
-        //        {
-        //            tile.SetInteractable(false);
-        //            tile.CheckAndAddCoveredQuadrants(curr);
-        //            tile.CheckAndDeactivateIfCovered();
-        //        }
-        //    }
-        //    tiles.Add(curr);
-        //}
     }
 
     public void AttemptInsertTile(Tile tile)
@@ -135,23 +127,25 @@ public class GameManager : MonoBehaviour
         if (tiles.Count + storage.GetTileCount() + hand.GetHandCount() == 0)
         {
             //insert victory
+            overlay.OpenOverlay(OverlayType.Victory);
         }
         if (hand.IsHandFull())
         {
             //game over
-            restartOverlay.SetActive(true);
+            overlay.OpenOverlay(OverlayType.GameOver);
         }
     }
 
     public void ReAddTile(Tile tile)
     {
-        tiles.Add(tile);
         TileTypes tileType = tile.GetTileTypes();
         if (!typeCount.ContainsKey(tileType))
         {
             typeCount.Add(tileType, 0);
         }
         typeCount[tileType]++;
+        tile.CheckOverlapAgainst(tiles, false);
+        tiles.Add(tile);
     }
 
     public void Shuffle()

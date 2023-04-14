@@ -1,93 +1,94 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Hand : MonoBehaviour
 {
-    int handCount = 0;
     Tile lastDrawnTile;
     Transform lastParentTrans;
     Vector3 lastPos;
     [SerializeField]
     Storage storage;
-
+    Dictionary<TileTypes, int> typesCount;
+    List<Tile> currHand;
     Dictionary<TileTypes, List<Tile>> typeCount;
     // Start is called before the first frame update
     void Start()
     {
+        typesCount = new Dictionary<TileTypes, int>();
+        foreach (TileTypes types in System.Enum.GetValues(typeof(TileTypes)))
+        {
+            typesCount.Add(types, 0);
+        }
+        currHand = new List<Tile>();
         typeCount = new Dictionary<TileTypes, List<Tile>>();
     }
     
     public bool IsHandFull()
     {
-        return handCount >= 7;
+        return currHand.Count >= 7;
     }
 
     public int GetHandCount()
     {
-        return handCount;
+        return currHand.Count;
     }
 
     public List<Tile> InsertTile(Tile tile)
     {
-        handCount++;
         TileTypes currType = tile.GetTileTypes();
-        if (!typeCount.ContainsKey(currType))
+        //alr in hand, need to find sibling index to slot
+        Transform tileTransform = tile.transform;
+        lastParentTrans = tileTransform.parent;
+        lastPos = tileTransform.position;
+        tileTransform.SetParent(this.transform);
+        int currCount = typesCount[currType];
+        int currTypeStartIdx = 0;
+        if (currCount != 0)
         {
-            typeCount.Add(currType, new List<Tile>());
-        }
-
-        int pos = 0;
-        foreach(KeyValuePair<TileTypes, List<Tile>> kvp in typeCount)
-        {
-            
-            pos += kvp.Value.Count;
-            if (kvp.Key == currType)
+            for(int i = 0; i < currHand.Count; i++)
             {
-                Transform tileTransform = tile.transform;
-                lastParentTrans = tileTransform.parent;
-                lastPos = tileTransform.position;
-                tileTransform.SetParent(this.transform);
-                tileTransform.SetSiblingIndex(pos);
-                kvp.Value.Add(tile);
-                if (kvp.Value.Count == 3)
+                if (currHand[i].GetTileTypes() == currType)
                 {
-                    lastDrawnTile = null;
-                    handCount -= 3;
-                    //completed 3, remove from dictionary and return to game manager to remove from list
-                    List<Tile> set = typeCount[currType];
-                    typeCount.Remove(currType);
-                    return set;
-                } else
-                {
-                    lastDrawnTile = tile;
+                    currTypeStartIdx = i;
+                    tileTransform.SetSiblingIndex(i + currCount);
+                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)this.transform);
+                    break;
                 }
-                break;
             }
         }
+        typesCount[currType]++;
+        currHand.Insert(tileTransform.GetSiblingIndex(), tile);
+        if (typesCount[currType] == 3)
+        {
+            lastDrawnTile = null;
+            typesCount[currType] = 0;
+            //completed 3, remove from List and return to game manager to destroy
+            List<Tile> set = currHand.GetRange(currTypeStartIdx, 3);
+            currHand.RemoveRange(currTypeStartIdx, 3);
+            return set;
+        }
+        else
+        {
+            lastDrawnTile = tile;
+        }
+
         return null;  
     }
 
     public bool Store()
     {
-        if (handCount == 0) return false;
+        if (currHand.Count == 0) return false;
         List<Tile> toStore = new List<Tile>();
-        List<TileTypes> emptiedTypes = new List<TileTypes>();
-        foreach (KeyValuePair<TileTypes, List<Tile>> kvp in typeCount)
+        for (int i = 0; i < 3; i++)
         {
-            while (toStore.Count < 3 && kvp.Value.Count > 0)
-            {
-                toStore.Add(kvp.Value[0]);
-                kvp.Value.RemoveAt(0);
-            }
-            if (kvp.Value.Count == 0) emptiedTypes.Add(kvp.Key);
+            if (currHand.Count == 0) break;
+            Tile currTile = currHand[0];
+            typesCount[currTile.GetTileTypes()]--;
+            currHand.RemoveAt(0);
+            toStore.Add(currTile);
         }
-
-        foreach(TileTypes type in emptiedTypes)
-        {
-            typeCount.Remove(type);
-        }
-        handCount -= toStore.Count;
         storage.Store(toStore);
         return true;
     }
@@ -95,27 +96,20 @@ public class Hand : MonoBehaviour
     public bool Undo()
     {
         if (lastDrawnTile == null) return false;
+        TileTypes type = lastDrawnTile.GetTileTypes();
+        typesCount[type]--;
+        lastDrawnTile.SetBlocker(false);
+        lastDrawnTile.transform.SetParent(lastParentTrans);
+        lastDrawnTile.transform.position = lastPos;
+        currHand.Remove(lastDrawnTile);
         if (lastParentTrans.gameObject.name.Contains("Layer"))
         {
             GameManager.Instance.ReAddTile(lastDrawnTile);
         } else
         {
-            storage.IncreaseTileCount();
+            storage.ReAddTile(lastDrawnTile);
         }
-        handCount--;
-        TileTypes type = lastDrawnTile.GetTileTypes();
-        foreach(KeyValuePair<TileTypes, List<Tile>> kvp in typeCount)
-        {
-            if (kvp.Key == type)
-            {
-                kvp.Value.Remove(lastDrawnTile);
-                break;
-            }
-        }
-        if (typeCount[type].Count == 0) typeCount.Remove(type);
-        lastDrawnTile.SetBlocker(false);
-        lastDrawnTile.transform.SetParent(lastParentTrans);
-        lastDrawnTile.transform.position = lastPos;
+        lastDrawnTile = null;
         return true;
     }
 }

@@ -18,39 +18,12 @@ public class Tile : MonoBehaviour
     Dictionary<Quadrants, Tile> coveredQuadrants;
     HashSet<Tile> coveredTiles;
 
-    public static Dictionary<TileTypes, Color> ColorMap =
-    new Dictionary<TileTypes, Color>
-    {
-        {TileTypes.Red, Color.red},
-        {TileTypes.Blue, Color.blue},
-        {TileTypes.Yellow, Color.yellow},
-        {TileTypes.Green, Color.green},
-        {TileTypes.Orange, new Color(0.96f, 0.51f, 0.19f, 1f)},
-        {TileTypes.Purple, new Color(0.57f, 0.12f, 0.71f, 1f)},
-        {TileTypes.Brown, new Color(0.67f, 0.43f, 0.16f, 1f)},
-        {TileTypes.Cyan, new Color(0.27f, 0.94f, 0.94f, 1f)},
-        {TileTypes.Magenta, new Color(0.94f, 0.20f, 0.90f, 1f)},
-        {TileTypes.Pink, new Color(0.98f, 0.75f, 0.83f, 1f)},
-        {TileTypes.Black, Color.black},
-        {TileTypes.White, Color.white},
-    };
-
     void Awake()
     {
         coveredQuadrants = new Dictionary<Quadrants, Tile>();
         coveredTiles = new HashSet<Tile>();
     }
 
-    // Start is called before the first frame update
-    void Start()
-    {
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 
     public void SetInteractable(bool canInteract)
     {
@@ -114,6 +87,7 @@ public class Tile : MonoBehaviour
         {
             other.CoveringRemoved(this);
         }
+        coveredTiles.Clear();
     }
 
     public void CoveringRemoved(Tile other)
@@ -140,10 +114,7 @@ public class Tile : MonoBehaviour
     {
         if (coveredQuadrants.Count == 4)
         {
-            //foreach(Tile tile in coveredQuadrants.Values)
-            //{
-            //    Debug.Log(tile.gameObject.name);
-            //}
+
             gameObject.SetActive(false);
         }
     }
@@ -155,6 +126,20 @@ public class Tile : MonoBehaviour
                 otherRect.position.y, otherRect.position.y + Utils.TileHeight);
     }
 
+    public void CheckOverlapAgainst(List<Tile> tiles, bool isStore)
+    {
+        foreach (Tile tile in tiles)
+        {
+            if (!tile.gameObject.activeSelf) continue;
+            if (IsOverlappingWith(tile))
+            {
+                tile.SetInteractable(false);
+                tile.CheckAndAddCoveredQuadrants(this);
+                if (!isStore) tile.CheckAndDeactivateIfCovered();
+            }
+        }
+    }
+
     public TileTypes GetTileTypes ()
     {
         return type;
@@ -162,7 +147,7 @@ public class Tile : MonoBehaviour
     public void SetTileType(TileTypes type)
     {
         this.type = type;
-        tileImage.color = ColorMap[type];
+        tileImage.color = Utils.ColorMap[type];
     }
 
     public void Clicked()

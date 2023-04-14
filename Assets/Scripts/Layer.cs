@@ -10,12 +10,6 @@ public class Layer : MonoBehaviour
     [SerializeField]
     RectTransform myRectTransform;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
     public void Init(float localPosX, float localPosY, int size, int amountTiles, List<Tile> lowerLevelTiles)
     {
         this.size = size;
@@ -35,16 +29,7 @@ public class Layer : MonoBehaviour
                     //currGO.transform.localPosition = new Vector3(i * Utils.TileWidth, j * Utils.TileHeight, 0);
                     currGO.name = "Tile" + currCount;
                     Tile curr = currGO.GetComponent<Tile>();
-                    foreach (Tile tile in lowerLevelTiles)
-                    {
-                        if (!tile.gameObject.activeSelf) continue;
-                        if (curr.IsOverlappingWith(tile))
-                        {
-                            tile.SetInteractable(false);
-                            tile.CheckAndAddCoveredQuadrants(curr);
-                            tile.CheckAndDeactivateIfCovered();
-                        }
-                    }
+                    curr.CheckOverlapAgainst(lowerLevelTiles, false);
                     generatedTiles.Add(curr);
                     amountTiles--;
                     currCount++;
@@ -58,9 +43,4 @@ public class Layer : MonoBehaviour
         lowerLevelTiles.AddRange(generatedTiles);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

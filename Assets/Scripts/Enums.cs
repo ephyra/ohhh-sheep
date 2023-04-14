@@ -1,3 +1,10 @@
+public enum OverlayType
+{
+    Pause,
+    GameOver,
+    Victory
+}    
+
 public enum TileTypes
 {
     Red,

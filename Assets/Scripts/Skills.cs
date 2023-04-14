@@ -11,12 +11,14 @@ public class Skills : MonoBehaviour
     [SerializeField]
     Hand hand;
     [SerializeField]
+    Overlay overlay;
+    [SerializeField]
     Text errorText;
-    // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         skillUsed = new List<SkillsList>();
     }
+
 
     public void UseSkill(int type)
     {
@@ -48,10 +50,8 @@ public class Skills : MonoBehaviour
                 skillsButton[(int)skillType].interactable = false;
                 if (skillType == SkillsList.Revive)
                 {
-                    GameObject revButton = skillsButton[(int)skillType].gameObject;
-                    revButton.SetActive(false);
                     //remove game over overlay
-                    revButton.transform.parent.gameObject.SetActive(false);
+                    overlay.CloseOverlay();
                 }
                 skillUsed.Add(skillType);
             } else
